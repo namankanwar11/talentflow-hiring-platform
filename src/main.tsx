@@ -8,11 +8,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 const queryClient = new QueryClient()
 
 async function enableMocking() {
-  if (process.env.NODE_ENV !== 'development') {
-    return
-  }
- 
+  // We've removed the environment check to allow MSW to run on the deployed site
   const { worker } = await import('./mocks/browser')
+ 
   return worker.start()
 }
 
