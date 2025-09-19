@@ -1,4 +1,3 @@
-// src/lib/db.ts
 import Dexie, { type Table } from 'dexie';
 import { generateSeedData } from '../mocks/seed';
 
@@ -10,7 +9,6 @@ export interface Job {
   tags: string[];
   order: number;
 }
-
 export interface Candidate {
   id: string;
   name: string;
@@ -19,19 +17,17 @@ export interface Candidate {
   stage: "applied" | "screen" | "tech" | "offer" | "hired" | "rejected";
 }
 
-// The Assessment interface is no longer needed as we use an inline type.
-
 export class TalentFlowDB extends Dexie {
   jobs!: Table<Job>;
   candidates!: Table<Candidate>;
-  assessments!: Table<{ jobId: string, questions: any[] }>; // <-- MODIFIED TABLE
+  assessments!: Table<{ jobId: string, questions: any[] }>;
 
   constructor() {
     super('talentflowDB');
-    this.version(2).stores({ // <-- INCREMENT VERSION TO 2
+    this.version(2).stores({
       jobs: '++id, title, status, order',
       candidates: '++id, name, email, jobId, stage',
-      assessments: 'jobId', // <-- Use jobId as the primary key
+      assessments: 'jobId',
     });
   }
 }
@@ -39,31 +35,25 @@ export class TalentFlowDB extends Dexie {
 export const db = new TalentFlowDB();
 
 export async function populateDb() {
-    const jobCount = await db.jobs.count();
-    // Also check assessments count to handle upgrades from v1
-    const assessmentCount = await db.assessments.count(); 
-    if (jobCount > 0 && assessmentCount > 0) {
-        console.log("Database already seeded.");
-        return;
-    }
-    
-    console.log("Seeding database...");
-    const { jobs, candidates, assessments } = generateSeedData();
-    
-    // Clear existing data before seeding to ensure consistency on version change
-    await db.jobs.clear();
-    await db.candidates.clear();
-    await db.assessments.clear();
-    
+  const jobCount = await db.jobs.count();
+  if (jobCount > 0) {
+    console.log("Database already seeded.");
+    return;
+  }
+  
+  console.log("Seeding database...");
+  const { jobs, candidates, assessments } = generateSeedData();
+  
+  await db.transaction('rw', db.jobs, db.candidates, db.assessments, async () => {
     await db.jobs.bulkAdd(jobs);
     await db.candidates.bulkAdd(candidates);
-
-    // Transform assessments object into an array suitable for the new schema
-    const assessmentsArray = Object.entries(assessments).map(([jobId, assessmentData]) => ({
-      jobId,
-      questions: assessmentData.questions,
-    }));
-    await db.assessments.bulkAdd(assessmentsArray);
     
-    console.log("Database seeded successfully.");
+    for (const jobId in assessments) {
+      if (Object.prototype.hasOwnProperty.call(assessments, jobId)) {
+        await db.assessments.put({ jobId, questions: assessments[jobId].questions });
+      }
+    }
+  });
+  
+  console.log("Database seeded successfully.");
 }

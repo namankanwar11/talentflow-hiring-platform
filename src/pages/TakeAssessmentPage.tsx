@@ -27,7 +27,7 @@ async function submitAssessment(variables: { jobId: string, responses: any }) {
 export function TakeAssessmentPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const [responses, setResponses] = useState<Record<string, any>>({});
-
+  
   const { data: assessment, isLoading } = useQuery({
     queryKey: ['assessment', jobId],
     queryFn: () => fetchAssessment(jobId!),
@@ -45,10 +45,6 @@ export function TakeAssessmentPage() {
     }
   });
   
-  const handleResponseChange = (questionId: number, value: any) => {
-    setResponses(prev => ({ ...prev, [questionId]: value }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     for (const question of assessment?.questions || []) {
@@ -63,44 +59,41 @@ export function TakeAssessmentPage() {
     submitMutation.mutate({ jobId: jobId!, responses });
   };
 
+  const handleResponseChange = (questionId: number, value: any) => {
+    setResponses(prev => ({ ...prev, [questionId]: value }));
+  };
+
   return (
-    <div>
-      <Link to={`/jobs/${jobId}/assessment`} className="text-sm text-gray-600 hover:underline mb-4 inline-block">&larr; Back to Builder</Link>
-      <div className="mb-8">
+    <div className="max-w-3xl mx-auto">
+      <div className="mb-8 text-center">
         <h2 className="text-3xl font-bold tracking-tight text-gray-900">Assessment</h2>
         <p className="text-lg text-gray-600 mt-1">Please answer the following questions.</p>
+        <Link to={`/jobs/${jobId}/assessment`} className="text-sm text-gray-500 hover:underline mt-4 inline-block">&larr; Back to Builder</Link>
       </div>
 
-      {isLoading ? <p>Loading assessment...</p> : (
-        <form onSubmit={handleSubmit} className="space-y-8 p-6 bg-white border rounded-lg shadow-sm">
+      {isLoading ? <p className="text-center">Loading assessment...</p> : (
+        <form onSubmit={handleSubmit} className="space-y-8 p-8 bg-white border rounded-lg shadow-sm">
           {assessment?.questions.map((q, index) => (
             <div key={q.id}>
-              <label className="block font-semibold text-gray-800">
+              <label className="block text-lg font-semibold text-gray-800">
                 {index + 1}. {q.question}
                 {q.validation?.required && <span className="text-red-500 ml-1">*</span>}
               </label>
-              {q.type === 'short-text' && <input type="text" onChange={e => handleResponseChange(q.id, e.target.value)} className="w-full p-2 mt-2 border rounded-md" />}
-              {q.type === 'long-text' && <textarea onChange={e => handleResponseChange(q.id, e.target.value)} className="w-full p-2 mt-2 border rounded-md" rows={4}></textarea>}
-              {q.type === 'numeric' && <input type="number" onChange={e => handleResponseChange(q.id, e.target.value)} className="w-full p-2 mt-2 border rounded-md" />}
-              {/* THIS IS THE CORRECTED LINE */}
-              {q.type === 'file-upload' && <input type="file" onChange={e => handleResponseChange(q.id, e.target.files ? e.target.files[0].name : null)} className="w-full p-2 mt-2 border rounded-md text-sm" />}
-              {q.type === 'single-choice' && (
-                <div className="mt-2 space-y-2">
-                  {q.options?.map((opt) => <div key={opt}><label className="flex items-center gap-2"><input type="radio" name={`q_${q.id}`} value={opt} checked={responses[q.id] === opt} onChange={e => handleResponseChange(q.id, e.target.value)} /> {opt}</label></div>)}
-                </div>
-              )}
-              {q.type === 'multi-choice' && (
-                <div className="mt-2 space-y-2">
-                  {q.options?.map((opt) => <div key={opt}><label className="flex items-center gap-2"><input type="checkbox" value={opt} checked={(responses[q.id] || []).includes(opt)} onChange={e => {
+              <div className="mt-3">
+                {q.type === 'short-text' && <input type="text" onChange={e => handleResponseChange(q.id, e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />}
+                {q.type === 'long-text' && <textarea onChange={e => handleResponseChange(q.id, e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" rows={4}></textarea>}
+                {q.type === 'numeric' && <input type="number" onChange={e => handleResponseChange(q.id, e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />}
+                {q.type === 'file-upload' && <input type="file" onChange={e => handleResponseChange(q.id, e.target.files ? e.target.files[0].name : null)} className="w-full p-2 border border-gray-300 rounded-md text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-800 hover:file:bg-gray-200" />}
+                {q.type === 'single-choice' && <div className="space-y-2">{q.options?.map((opt) => <div key={opt}><label className="flex items-center gap-2 p-3 border rounded-md hover:bg-gray-50"><input type="radio" name={`q_${q.id}`} value={opt} checked={responses[q.id] === opt} onChange={e => handleResponseChange(q.id, e.target.value)} className="h-4 w-4 text-gray-800 focus:ring-gray-800" /> {opt}</label></div>)}</div>}
+                {q.type === 'multi-choice' && <div className="space-y-2">{q.options?.map((opt) => <div key={opt}><label className="flex items-center gap-2 p-3 border rounded-md hover:bg-gray-50"><input type="checkbox" value={opt} checked={(responses[q.id] || []).includes(opt)} onChange={e => {
                       const current = responses[q.id] || [];
                       const newResponses = e.target.checked ? [...current, opt] : current.filter((item: string) => item !== opt);
                       handleResponseChange(q.id, newResponses);
-                  }} /> {opt}</label></div>)}
-                </div>
-              )}
+                  }} className="h-4 w-4 rounded text-gray-800 focus:ring-gray-800" /> {opt}</label></div>)}</div>}
+              </div>
             </div>
           ))}
-          <button type="submit" disabled={submitMutation.isPending} className="w-full px-4 py-2 text-sm font-semibold text-white bg-gray-800 rounded-lg shadow-sm hover:bg-gray-900 disabled:opacity-50">
+          <button type="submit" disabled={submitMutation.isPending} className="w-full px-4 py-3 text-base font-semibold text-white bg-gray-800 rounded-lg shadow-sm hover:bg-gray-900 disabled:opacity-50">
             {submitMutation.isPending ? 'Submitting...' : 'Submit Assessment'}
           </button>
         </form>

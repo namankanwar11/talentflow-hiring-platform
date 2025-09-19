@@ -1,8 +1,22 @@
-// src/mocks/seed.ts
 import { faker } from '@faker-js/faker';
 import slugify from 'slugify';
 
-// --- JOB DATA ---
+// --- Question Banks ---
+const techQuestions = [
+  "Describe your experience with containerization technologies like Docker and Kubernetes.",
+  "What is the difference between SQL and NoSQL databases?",
+  "Explain the concept of RESTful APIs.",
+];
+const marketingQuestions = [
+  "Describe a successful marketing campaign you have worked on.",
+  "How do you measure the ROI of a marketing campaign?",
+];
+const generalQuestions = [
+  "What are your long-term career goals?",
+  "Describe a challenging situation you faced at work and how you handled it.",
+];
+
+// --- Helper Functions ---
 const createRandomJob = (order: number) => {
   const title = faker.person.jobTitle();
   return {
@@ -10,14 +24,11 @@ const createRandomJob = (order: number) => {
     title,
     slug: slugify(title, { lower: true, strict: true }),
     status: faker.helpers.arrayElement<'active' | 'archived'>(['active', 'archived']),
-    tags: faker.helpers.arrayElements(['Full-time', 'Remote', 'Contract', 'Engineering'], { min: 1, max: 3 }),
+    tags: faker.helpers.arrayElements(['Full-time', 'Remote', 'Contract'], { min: 1, max: 2 }),
     order,
   };
 };
-
-// --- CANDIDATE DATA ---
 const CANDIDATE_STAGES = ["applied", "screen", "tech", "offer", "hired", "rejected"] as const;
-
 const createRandomCandidate = (jobIds: string[]) => {
   return {
     id: faker.string.uuid(),
@@ -27,37 +38,32 @@ const createRandomCandidate = (jobIds: string[]) => {
     stage: faker.helpers.arrayElement(CANDIDATE_STAGES),
   };
 };
-
-// --- ASSESSMENT DATA ---
-const createRandomQuestion = () => {
-    const questionType = faker.helpers.arrayElement(['single-choice', 'multi-choice', 'short-text', 'long-text']);
-    const question = {
-        id: faker.string.uuid(),
-        type: questionType,
-        question: faker.lorem.sentence({ min: 5, max: 10 }).replace(/\.$/, '?'),
-        options: [] as string[],
-    };
-    if (questionType === 'single-choice' || questionType === 'multi-choice') {
-        question.options = Array.from({ length: 4 }, () => faker.lorem.words(2));
+const createRandomQuestion = (jobTitle: string) => {
+    let questionPool = generalQuestions;
+    const lowerCaseTitle = jobTitle.toLowerCase();
+    if (lowerCaseTitle.includes('engineer') || lowerCaseTitle.includes('developer')) {
+        questionPool = techQuestions;
+    } else if (lowerCaseTitle.includes('marketing') || lowerCaseTitle.includes('communications')) {
+        questionPool = marketingQuestions;
     }
-    return question;
+    return {
+        id: faker.number.int(),
+        type: 'long-text',
+        question: faker.helpers.arrayElement(questionPool),
+    };
 };
 
-const createRandomAssessment = () => ({
-    id: faker.string.uuid(),
-    questions: Array.from({ length: 10 }, createRandomQuestion)
-});
-
-// --- MAIN SEED FUNCTION ---
+// --- Main Seed Function ---
 export const generateSeedData = () => {
   const jobs = Array.from({ length: 25 }, (_, i) => createRandomJob(i));
   const jobIds = jobs.map(j => j.id);
   const candidates = Array.from({ length: 1000 }, () => createRandomCandidate(jobIds));
-
-  // Assign an assessment to the first 3 jobs for simplicity
-  const assessments: Record<string, ReturnType<typeof createRandomAssessment>> = {};
-  jobIds.slice(0, 3).forEach(jobId => {
-    assessments[jobId] = createRandomAssessment();
+  const assessments: Record<string, { questions: any[] }> = {};
+  
+  jobs.slice(0, 5).forEach(job => {
+      assessments[job.id] = {
+          questions: Array.from({ length: faker.number.int({ min: 3, max: 5 }) }, () => createRandomQuestion(job.title))
+      };
   });
 
   return { jobs, candidates, assessments };
