@@ -9,16 +9,14 @@ export function RootLayout() {
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm border-b sticky top-0 z-10">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* This main flex container pushes its two children to opposite ends */}
           <div className="flex items-center justify-between h-16">
             
-            {/* Left Item: The Brand/Logo */}
             <div className="flex items-center gap-2">
               <Briefcase className="h-7 w-7 text-gray-800" />
               <h1 className="text-2xl font-bold text-gray-800">TalentFlow</h1>
             </div>
 
-            {/* Right Item: The Navigation Links */}
+            {/* This div controls the spacing for the links */}
             <div className="flex items-center space-x-6">
               <NavLink 
                 to="/jobs" 
