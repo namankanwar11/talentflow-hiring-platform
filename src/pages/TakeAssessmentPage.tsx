@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 // --- Types ---
 interface ValidationRules { required?: boolean; }
 type QuestionType = 'single-choice' | 'multi-choice' | 'short-text' | 'long-text' | 'numeric' | 'file-upload';
-interface Question { id: number; type: QuestionType; question: string; options?: string[]; validation?: ValidationRules; }
+interface Question { id: number; type: QuestionType; question: string; options?: string[]; validation?: ValidationRules; answerKey?: string | string[]; }
 
 // --- API Functions ---
 async function fetchAssessment(jobId: string): Promise<{ questions: Question[] }> {
@@ -27,7 +27,8 @@ async function submitAssessment(variables: { jobId: string, responses: any }) {
 export function TakeAssessmentPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const [responses, setResponses] = useState<Record<string, any>>({});
-  
+  const [score, setScore] = useState<{ correct: number, total: number } | null>(null);
+
   const { data: assessment, isLoading } = useQuery({
     queryKey: ['assessment', jobId],
     queryFn: () => fetchAssessment(jobId!),
@@ -36,14 +37,34 @@ export function TakeAssessmentPage() {
   
   const submitMutation = useMutation({
     mutationFn: submitAssessment,
-    onSuccess: (data) => {
-      alert('Assessment submitted successfully!');
-      console.log('Server response:', data);
+    onSuccess: () => {
+      calculateScore();
     },
-    onError: (err) => {
-        alert(`Submission failed: ${err.message}`);
-    }
+    onError: (err) => { alert(`Submission failed: ${err.message}`); }
   });
+
+  const calculateScore = () => {
+    let correctAnswers = 0;
+    const questions = assessment?.questions || [];
+    const scorableQuestions = questions.filter(q => (q.type === 'single-choice' || q.type === 'multi-choice') && q.answerKey);
+
+    scorableQuestions.forEach(q => {
+      const userResponse = responses[q.id];
+      const answerKey = q.answerKey;
+      if (!userResponse) return;
+
+      if (q.type === 'single-choice' && userResponse === answerKey) {
+        correctAnswers++;
+      } else if (q.type === 'multi-choice') {
+        const key = (answerKey as string[]).sort();
+        const res = (userResponse as string[]).sort();
+        if (JSON.stringify(key) === JSON.stringify(res)) {
+          correctAnswers++;
+        }
+      }
+    });
+    setScore({ correct: correctAnswers, total: scorableQuestions.length });
+  };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +92,7 @@ export function TakeAssessmentPage() {
         <Link to={`/jobs/${jobId}/assessment`} className="text-sm text-gray-500 hover:underline mt-4 inline-block">&larr; Back to Builder</Link>
       </div>
 
-      {isLoading ? <p className="text-center">Loading assessment...</p> : (
+      {isLoading ? <p className="text-center">Loading assessment...</p> : !score ? (
         <form onSubmit={handleSubmit} className="space-y-8 p-8 bg-white border rounded-lg shadow-sm">
           {assessment?.questions.map((q, index) => (
             <div key={q.id}>
@@ -97,6 +118,17 @@ export function TakeAssessmentPage() {
             {submitMutation.isPending ? 'Submitting...' : 'Submit Assessment'}
           </button>
         </form>
+      ) : (
+        <div className="text-center p-8 bg-white border rounded-lg shadow-sm">
+          <h3 className="text-2xl font-bold text-gray-900">Thank You!</h3>
+          <p className="text-lg text-gray-600 mt-2">Your assessment has been submitted.</p>
+          <div className="mt-6">
+            <p className="text-xl font-medium text-gray-700">Your Score:</p>
+            <p className="text-5xl font-bold text-gray-900 mt-2">
+              {score.correct} / {score.total}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

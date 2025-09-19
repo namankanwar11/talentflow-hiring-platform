@@ -3,7 +3,6 @@ import slugify from 'slugify';
 
 // --- Question Banks ---
 const techQuestions = [
-  "Describe your experience with containerization technologies like Docker and Kubernetes.",
   "What is the difference between SQL and NoSQL databases?",
   "Explain the concept of RESTful APIs.",
 ];
@@ -38,19 +37,28 @@ const createRandomCandidate = (jobIds: string[]) => {
     stage: faker.helpers.arrayElement(CANDIDATE_STAGES),
   };
 };
+
 const createRandomQuestion = (jobTitle: string) => {
     let questionPool = generalQuestions;
     const lowerCaseTitle = jobTitle.toLowerCase();
     if (lowerCaseTitle.includes('engineer') || lowerCaseTitle.includes('developer')) {
         questionPool = techQuestions;
-    } else if (lowerCaseTitle.includes('marketing') || lowerCaseTitle.includes('communications')) {
+    } else if (lowerCaseTitle.includes('marketing')) {
         questionPool = marketingQuestions;
     }
-    return {
+
+    const questionType = faker.helpers.arrayElement(['single-choice', 'multi-choice']);
+    const options = Array.from({ length: 4 }, () => faker.lorem.words(2));
+
+    const question = {
         id: faker.number.int(),
-        type: 'long-text',
+        type: questionType,
         question: faker.helpers.arrayElement(questionPool),
+        options,
+        answerKey: undefined,
+        validation: { required: faker.datatype.boolean() }
     };
+    return question;
 };
 
 // --- Main Seed Function ---
